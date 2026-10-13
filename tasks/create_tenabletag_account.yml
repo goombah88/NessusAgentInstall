@@ -1,0 +1,65 @@
+---
+# Pre-create the tenabletag group/user with fixed IDs before the Nessus Agent
+# installer creates them itself. If the preferred UID/GID is already claimed
+# by an unrelated account, fall back to the next free one instead of failing.
+
+- name: Check if desired tenabletag GID is already used by another group
+  command: "getent group {{ tenabletag_gid }}"
+  register: tenabletag_gid_check
+  changed_when: false
+  failed_when: false
+
+- name: Find next free GID if the preferred GID is taken by another group
+  shell: |
+    set -e
+    gid={{ tenabletag_gid }}
+    while getent group "$gid" > /dev/null; do
+      gid=$((gid + 1))
+    done
+    echo "$gid"
+  register: tenabletag_gid_search
+  changed_when: false
+  when: tenabletag_gid_check.rc == 0 and (tenabletag_gid_check.stdout.split(':')[0] != 'tenabletag')
+
+- name: Set effective tenabletag GID
+  set_fact:
+    tenabletag_gid_effective: "{{ tenabletag_gid_search.stdout | default(tenabletag_gid, true) | trim }}"
+
+- name: Pre-create tenabletag group
+  group:
+    name: tenabletag
+    gid: "{{ tenabletag_gid_effective }}"
+    system: yes
+
+- name: Check if desired tenabletag UID is already used by another user
+  command: "getent passwd {{ tenabletag_uid }}"
+  register: tenabletag_uid_check
+  changed_when: false
+  failed_when: false
+
+- name: Find next free UID if the preferred UID is taken by another user
+  shell: |
+    set -e
+    uid={{ tenabletag_uid }}
+    while getent passwd "$uid" > /dev/null; do
+      uid=$((uid + 1))
+    done
+    echo "$uid"
+  register: tenabletag_uid_search
+  changed_when: false
+  when: tenabletag_uid_check.rc == 0 and (tenabletag_uid_check.stdout.split(':')[0] != 'tenabletag')
+
+- name: Set effective tenabletag UID
+  set_fact:
+    tenabletag_uid_effective: "{{ tenabletag_uid_search.stdout | default(tenabletag_uid, true) | trim }}"
+
+- name: Pre-create tenabletag user
+  user:
+    name: tenabletag
+    uid: "{{ tenabletag_uid_effective }}"
+    group: tenabletag
+    home: /opt/nessus_agent/var/nessus/mod/com.tenable.agent_identifier_service/data
+    shell: /bin/false
+    system: yes
+    create_home: no
+    comment: ""

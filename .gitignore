@@ -1,0 +1,19 @@
+# Installer binaries are committed to the repo under files/
+
+# Ansible retry files
+*.retry
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,55 @@
+---
+- name: Check available disk space on /opt
+  command: df --output=avail -BG /opt
+  register: opt_disk_space
+  changed_when: false
+
+- name: Fail if /opt has less than 3GB of free space
+  fail:
+    msg: "Insufficient disk space on /opt: {{ opt_disk_space.stdout_lines[1] | trim }} available, at least 3G required."
+  when: (opt_disk_space.stdout_lines[1] | trim | regex_replace('G','') | int) < 3
+
+- name: Pre-create tenabletag group and user
+  include_tasks: create_tenabletag_account.yml
+
+- name: Copy Nessus Agent RPM to target
+  copy:
+    src: "{{ nessus_rpm_file }}"
+    dest: "{{ nessus_tmp_dir_linux }}/{{ nessus_rpm_file }}"
+    mode: '0644'
+
+- name: Install Nessus Agent RPM package
+  dnf:
+    name: "{{ nessus_tmp_dir_linux }}/{{ nessus_rpm_file }}"
+    state: present
+    disable_gpg_check: yes
+
+- name: Start and enable Nessus Agent service
+  service:
+    name: nessusagent
+    state: started
+    enabled: yes
+
+- name: Check if Nessus Agent is already linked
+  command: /opt/nessus_agent/sbin/nessuscli agent status
+  register: nessus_agent_status
+  changed_when: false
+  failed_when: false
+
+- name: Link Nessus Agent to Tenable Cloud
+  command: "/opt/nessus_agent/sbin/nessuscli agent link --key={{ nessus_link_key }} --cloud --groups={{ nessus_agent_group }} --network={{ nessus_network }}"
+  no_log: true
+  register: nessus_link_result
+  changed_when: "'linked' in nessus_link_result.stdout | lower or nessus_link_result.rc == 0"
+  failed_when: nessus_link_result.rc != 0
+  when: "'linked to' not in nessus_agent_status.stdout | lower"
+
+- name: Restart Nessus Agent service
+  service:
+    name: nessusagent
+    state: restarted
+
+- name: Clean up installer file
+  file:
+    path: "{{ nessus_tmp_dir_linux }}/{{ nessus_rpm_file }}"
+    state: absent

@@ -1,0 +1,7 @@
+---
+# Location-to-agent-group mapping derived from hostname prefix
+# sjc17* → SJC datacenter
+# rcd09* → RCD datacenter
+nessus_location_groups:
+  SJC: "ipam_tis_LRT0001080-agentgroup-01"
+  RCD: "ipam_ndcs_LRT0055903-agentgroup-01"

@@ -1,0 +1,34 @@
+---
+# Vault connection settings
+# vault_addr: overridable via Tower survey or extra-vars
+# vault_token: MUST be supplied via Tower survey (type: password) — no default
+vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('https://vault.systems.cll.cloud', true) }}"
+vault_token: ""
+
+# KV v2 secret path (relative, without mount point or 'data/')
+# engine_mount_point is set separately in the lookup (mount = 'cll')
+# 'link_key' is a field inside the 'global/nessus' secret, not a sub-path
+vault_nessus_path: "global/nessus"
+vault_nessus_field: "link_key"
+
+# Tenable Cloud sensor endpoint
+nessus_server: "sensor.cloud.tenable.com:443"
+nessus_network: "Default"
+
+# Agent version — update this when dropping new installers into files/
+nessus_agent_version: "11.2.1"
+
+# Agent installer filenames — must exist in the role's files/ directory
+nessus_deb_file: "NessusAgent-{{ nessus_agent_version }}-ubuntu1604_amd64.deb"
+nessus_rpm_file: "NessusAgent-{{ nessus_agent_version }}-el9.x86_64.rpm"
+nessus_msi_file: "NessusAgent-{{ nessus_agent_version }}-x64.msi"
+
+# Temporary destination on target hosts
+nessus_tmp_dir_linux: "/tmp"
+nessus_tmp_dir_windows: 'C:\Windows\Temp'
+
+# tenabletag system user created by the Nessus Agent package post-install script.
+# Pre-creating the user before install allows you to control the UID/GID.
+# Defaults match what the package would assign if left to create it itself.
+tenabletag_uid: 12345
+tenabletag_gid: 985

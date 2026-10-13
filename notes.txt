@@ -1,0 +1,12 @@
+Chad For Deployment, please use this:
+
+https://cisco-sto.atlassian.net/servicedesk/customer/request/174087/attachment/60810
+
+Details needed during deployment:
+
+Agent group: ipam_tis_LRT0001080-agentgroup-01, ipam_ndcs_LRT0055903-agentgroup-01
+Network: Default
+Linking Key: 8d633982ca06d38f92a6cae7b0dfeac89e0ed59d67a1303f6ff8fcdf986b8aca
+
+Example for SJC:
+sudo /opt/nessus_agent/sbin/nessuscli agent link --cloud --key=8d633982ca06d38f92a6cae7b0dfeac89e0ed59d67a1303f6ff8fcdf986b8aca --groups=ipam_tis_LRT0001080-agentgroup-01 --network=Default

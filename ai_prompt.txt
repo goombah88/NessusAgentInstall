@@ -1,0 +1,48 @@
+You are a Nessus security expert who loves making ansible roles to automate your job. 
+The task is to create an ansible role for deploying the Nessus tenable agent to all servers.
+Initialize a git repo.
+
+The project will be held in gitlab - https://gitlab.systems.cll.cloud/infrastructure-ops/install-tenable-agent.git
+Make sure you add a folder in the role to hold the agent install files
+You will fetch the linking key from vault using hvac - vault_path placeholder - /v1/cll/data/global/nessus/link_key
+/cll is the mount point, which I will just include in any vault paths
+
+Agent groups: "ipam_tis_LRT0001080-agentgroup-01, ipam_ndcs_LRT0055903-agentgroup-01"
+Network: Default
+Linking Key: in vault
+
+<!-- 
+Example for SJC:
+sudo /opt/nessus_agent/sbin/nessuscli agent link --cloud --key=8d633982ca06d38f92a6cae7b0dfeac89e0ed59d67a1303f6ff8fcdf986b8aca --groups=ipam_tis_LRT0001080-agentgroup-01
+-->
+
+Steps:
+- first, determine which OS you're running on. should be either Ubuntu, RHEL, or Windows. If not raise an alert.
+- then determine the location of the server
+  - in most cases the server name will start with either 
+  - sjc17 = SJC = groups="ipam_tis_LRT0001080-agentgroup-01"
+  - or 
+  - rcd09 = RCD = groups="ipam_ndcs_LRT0055903-agentgroup-01"
+
+- then download the appropriate agent file for the OS from the Gitlab repo
+Ubuntu - .deb
+RHEL - .rpm
+Windows - .msi
+
+- INSTALLATION
+  - Ubuntu - dpkg -i <deb file>
+  - RHEL - dnf install <rpm file>
+  - Windows - example: msiexec /i <msi file> NESSUS_GROUPS="<location-based group from above>" NESSUS_SERVER="sensor.cloud.tenable.com:443" NESSUS_KEY=<link_key> /qn
+
+- START UP THE SERVICE
+  - /sbin/service nessusagent start 
+  - systemctl enable nessusagent
+  - 
+- LINKING
+  - Ubuntu and RHEL - /opt/nessus_agent/sbin/nessuscli agent link --key=<link_key> --cloud --groups="<location-based group from above>"
+  
+  - Note: You must put the entire link command on the same line. Otherwise, you receive an error.
+
+
+  - Windows - part of install command
+

@@ -1,0 +1,24 @@
+---
+galaxy_info:
+  author: Chad Crider
+  description: Deploys and links the Tenable Nessus Agent on Ubuntu, RHEL, and Windows hosts
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+        - "10"
+    - name: Windows
+      versions:
+        - all
+  galaxy_tags:
+    - security
+    - tenable
+    - nessus
+
+dependencies: []

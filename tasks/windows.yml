@@ -1,0 +1,38 @@
+---
+- name: Ensure temp directory exists on Windows target
+  ansible.windows.win_file:
+    path: "{{ nessus_tmp_dir_windows }}"
+    state: directory
+
+- name: Copy Nessus Agent MSI to Windows target
+  ansible.windows.win_copy:
+    src: "{{ nessus_msi_file }}"
+    dest: '{{ nessus_tmp_dir_windows }}\{{ nessus_msi_file }}'
+
+# Linking is embedded in the MSI install command for Windows.
+# /qn = quiet/no UI, service starts automatically post-install.
+- name: Install and link Nessus Agent via MSI
+  ansible.windows.win_command: >-
+    msiexec /i "{{ nessus_tmp_dir_windows }}\{{ nessus_msi_file }}"
+    NESSUS_GROUPS="{{ nessus_agent_group }}"
+    NESSUS_SERVER="{{ nessus_server }}"
+    NESSUS_KEY="{{ nessus_link_key }}"
+    /qn
+  no_log: true
+  register: nessus_msi_result
+  failed_when: nessus_msi_result.rc not in [0, 3010]  # 3010 = success, reboot required
+
+- name: Restart Nessus Agent service
+  ansible.windows.win_service:
+    name: "Tenable Nessus Agent"
+    state: restarted
+
+- name: Clean up MSI installer
+  ansible.windows.win_file:
+    path: '{{ nessus_tmp_dir_windows }}\{{ nessus_msi_file }}'
+    state: absent
+
+- name: Warn if reboot required after MSI install
+  debug:
+    msg: "Nessus Agent installed successfully. A reboot may be required (exit code 3010)."
+  when: nessus_msi_result.rc == 3010

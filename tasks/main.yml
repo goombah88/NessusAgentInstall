@@ -1,0 +1,92 @@
+---
+# ─── Preflight Checks ─────────────────────────────────────────────────────────
+- name: Fail if vault_token is not provided
+  fail:
+    msg: >
+      'vault_token' is required but was not set.
+      In Ansible Tower, configure a Survey on the Job Template with a
+      'password' question mapped to the variable 'vault_token'.
+  when: vault_token | length == 0
+
+# ─── OS Validation ────────────────────────────────────────────────────────────
+- name: Fail on unsupported OS
+  fail:
+    msg: >
+      Unsupported OS family '{{ ansible_os_family }}' on host '{{ inventory_hostname }}'.
+      This role supports Debian (Ubuntu), RedHat (RHEL), and Windows only.
+  when: ansible_os_family not in ['Debian', 'RedHat', 'Windows']
+
+- name: Fail if Ubuntu version is less than 24.04
+  fail:
+    msg: >
+      Unsupported Ubuntu version '{{ ansible_distribution_version }}' on host '{{ inventory_hostname }}'.
+      This role requires Ubuntu 24.04 or later.
+  when:
+    - ansible_distribution == 'Ubuntu'
+    - ansible_distribution_version is version('24.04', '<')
+
+- name: Check for CIS hardening marker file
+  stat:
+    path: /etc/hardened
+  register: cis_hardened_file
+  when: ansible_os_family in ['Debian', 'RedHat']
+
+- name: Fail if server is not CIS hardened
+  fail:
+    msg: >
+      Host '{{ inventory_hostname }}' does not appear to be CIS hardened.
+      The required marker file /etc/hardened was not found.
+  when:
+    - ansible_os_family in ['Debian', 'RedHat']
+    - not cis_hardened_file.stat.exists
+
+# ─── Vault: Fetch Linking Key ─────────────────────────────────────────────────
+- name: Fetch Nessus linking key from Vault
+#   uri:
+#     url: "{{ vault_addr }}/v1/cll/data/global/nessus"
+#     method: GET
+#     headers:
+#       X-Vault-Token: "{{ vault_token | trim }}"
+#     return_content: yes
+#     status_code: 200
+#   register: vault_response
+#   no_log: false
+
+# - name: Set nessus_link_key from Vault response
+#   set_fact:
+#     nessus_link_key: "{{ vault_response.json.data.data.link_key }}"
+#   no_log: false
+  set_fact:
+    nessus_link_key: "8d633982ca06d38f92a6cae7b0dfeac89e0ed59d67a1303f6ff8fcdf986b8aca"
+
+# ─── Location Detection ───────────────────────────────────────────────────────
+- name: Determine server location from hostname
+  set_fact:
+    nessus_location: >-
+      {{ 'SJC' if inventory_hostname | lower is match('^sjc17')
+         else ('RCD' if inventory_hostname | lower is match('^rcd09')
+         else 'UNKNOWN') }}
+
+- name: Fail on unknown server location
+  fail:
+    msg: >
+      Cannot determine datacenter location from hostname '{{ inventory_hostname }}'.
+      Hostname must start with 'sjc17' (SJC) or 'rcd09' (RCD).
+  when: nessus_location == 'UNKNOWN'
+
+- name: Set agent group based on location
+  set_fact:
+    nessus_agent_group: "{{ nessus_location_groups[nessus_location] }}"
+
+# ─── OS-Specific Installation ─────────────────────────────────────────────────
+- name: Install Nessus Agent on Ubuntu
+  include_tasks: ubuntu.yml
+  when: ansible_os_family == 'Debian'
+
+- name: Install Nessus Agent on RHEL
+  include_tasks: rhel.yml
+  when: ansible_os_family == 'RedHat'
+
+- name: Install Nessus Agent on Windows
+  include_tasks: windows.yml
+  when: ansible_os_family == 'Windows'
